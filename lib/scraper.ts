@@ -61,10 +61,6 @@ const formatTime = () => new Date().toLocaleTimeString('en-US', { hour12: false 
 export async function startScraper() {
     if (isRunning) return;
 
-    // On Vercel, we can't rely on setInterval staying alive forever. 
-    // But we can start the check if it's not running.
-    // The state will assume to be "scraping" until finished.
-
     // Race condition to prevent hanging
     const timeout = new Promise<void>((_, reject) =>
         setTimeout(() => reject(new Error("Scrape timeout")), 55000)
@@ -86,14 +82,20 @@ async function checkProducts() {
 
     let browser;
     try {
-        let executablePath = await chromium.executablePath();
+        console.log(`[${formatTime()}] S: Resolving Executable Path`);
+        let executablePath = null;
         if (process.env.NODE_ENV === 'development') {
             executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+        } else {
+            // Vercel/Prod
+            executablePath = await chromium.executablePath();
         }
 
+        console.log(`[${formatTime()}] S: Path Resolved: ${executablePath ? 'Yes' : 'No'}`);
         console.log(`[${formatTime()}] S: Launching`);
+
         browser = await puppeteer.launch({
-            args: process.env.NODE_ENV === 'production' ? chromium.args : minimalArgs,
+            args: process.env.NODE_ENV === 'production' ? chromium.args : [],
             defaultViewport: { width: 1920, height: 1080 },
             executablePath: executablePath || undefined,
             headless: process.env.NODE_ENV === 'production' ? chromium.headless : true,
